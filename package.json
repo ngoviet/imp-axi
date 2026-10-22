@@ -1,0 +1,52 @@
+{
+  "name": "impeccable-axi",
+  "version": "0.1.0",
+  "description": "AXI wrapper for the Impeccable design detector: TOON summary by rule and file instead of hundreds of KB of JSON",
+  "type": "module",
+  "license": "MIT",
+  "author": "ngoviet",
+  "keywords": [
+    "axi",
+    "agent",
+    "cli",
+    "toon",
+    "impeccable",
+    "design",
+    "ui",
+    "claude-code"
+  ],
+  "bin": {
+    "impeccable-axi": "dist/bin/impeccable-axi.js"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "tsup",
+    "typecheck": "tsc -p tsconfig.json",
+    "lint": "eslint .",
+    "test": "vitest run",
+    "check": "tsc -p tsconfig.json && eslint . && vitest run",
+    "install:global": "tsup && node -e \"require('fs').mkdirSync('build/pack',{recursive:true})\" && npm pack --pack-destination build/pack && npm install -g build/pack/impeccable-axi-0.1.0.tgz"
+  },
+  "dependencies": {
+    "axi-sdk-js": "^0.1.13"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@types/node": "^26.6.5",
+    "eslint": "^10.13.0",
+    "tsup": "^8.5.1",
+    "typescript": "~6.0.3",
+    "typescript-eslint": "^8.72.0",
+    "vitest": "^5.0.5"
+  },
+  "allowScripts": {
+    "esbuild@0.27.7": true
+  }
+}

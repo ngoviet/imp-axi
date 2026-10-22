@@ -1,0 +1,114 @@
+[
+  {
+    "antipattern": "cramped-padding",
+    "name": "cramped-padding",
+    "description": "Text is too close to the edge of its container. Add at least 8px (ideally 12-16px) of space inside bordered, outlined, or colored containers so text does not touch the edge.",
+    "severity": "warning",
+    "category": "quality",
+    "file": "/proj/dist/about.html",
+    "line": 0,
+    "snippet": "<div> \"card\": children flush against bg"
+  },
+  {
+    "antipattern": "cramped-padding",
+    "name": "cramped-padding",
+    "description": "Text is too close to the edge of its container. Add at least 8px (ideally 12-16px) of space inside bordered, outlined, or colored containers so text does not touch the edge.",
+    "severity": "warning",
+    "category": "quality",
+    "file": "/proj/dist/about.html",
+    "line": 0,
+    "snippet": "<span> \"badge\": 2px inset at 14px"
+  },
+  {
+    "antipattern": "cramped-padding",
+    "name": "cramped-padding",
+    "description": "Text is too close to the edge of its container. Add at least 8px (ideally 12-16px) of space inside bordered, outlined, or colored containers so text does not touch the edge.",
+    "severity": "warning",
+    "category": "quality",
+    "file": "/proj/dist/index.html",
+    "line": 0,
+    "snippet": "<div> \"hero\": children flush"
+  },
+  {
+    "antipattern": "cramped-padding",
+    "name": "cramped-padding",
+    "description": "Text is too close to the edge of its container. Add at least 8px (ideally 12-16px) of space inside bordered, outlined, or colored containers so text does not touch the edge.",
+    "severity": "warning",
+    "category": "quality",
+    "file": "/proj/dist/index.html",
+    "line": 0,
+    "snippet": "<li> \"item\": 3px inset"
+  },
+  {
+    "antipattern": "cramped-padding",
+    "name": "cramped-padding",
+    "description": "Text is too close to the edge of its container. Add at least 8px (ideally 12-16px) of space inside bordered, outlined, or colored containers so text does not touch the edge.",
+    "severity": "warning",
+    "category": "quality",
+    "file": "/proj/dist/faq.html",
+    "line": 0,
+    "snippet": "<p> \"note\": flush"
+  },
+  {
+    "antipattern": "low-contrast",
+    "name": "low-contrast",
+    "description": "Text does not meet WCAG AA contrast requirements (4.5:1 for body, 3:1 for large text). Increase the contrast between text and background.",
+    "severity": "warning",
+    "category": "quality",
+    "file": "/proj/dist/about.html",
+    "line": 0,
+    "snippet": "2.0:1 (need 4.5:1) text #38bdf8 on #f8fafc"
+  },
+  {
+    "antipattern": "low-contrast",
+    "name": "low-contrast",
+    "description": "Text does not meet WCAG AA contrast requirements (4.5:1 for body, 3:1 for large text). Increase the contrast between text and background.",
+    "severity": "warning",
+    "category": "quality",
+    "file": "/proj/dist/index.html",
+    "line": 0,
+    "snippet": "3.1:1 (need 4.5:1) text #94a3b8 on #ffffff"
+  },
+  {
+    "antipattern": "low-contrast",
+    "name": "low-contrast",
+    "description": "Text does not meet WCAG AA contrast requirements (4.5:1 for body, 3:1 for large text). Increase the contrast between text and background.",
+    "severity": "warning",
+    "category": "quality",
+    "file": "/proj/dist/faq.html",
+    "line": 0,
+    "snippet": "2.4:1 (need 4.5:1) text #a3a3a3 on #f5f5f5"
+  },
+  {
+    "antipattern": "low-contrast",
+    "name": "low-contrast",
+    "description": "Text does not meet WCAG AA contrast requirements (4.5:1 for body, 3:1 for large text). Increase the contrast between text and background.",
+    "severity": "advisory",
+    "category": "quality",
+    "file": "/proj/dist/faq.html",
+    "line": 0,
+    "snippet": "4.2:1 (need 4.5:1) large text",
+    "advisory": true
+  },
+  {
+    "antipattern": "gradient-text",
+    "name": "gradient-text",
+    "description": "Gradient text is decorative rather than meaningful, a common AI tell, especially on headings and metrics. Use solid colors for text.",
+    "severity": "warning",
+    "category": "slop",
+    "file": "/proj/dist/assets/index.css",
+    "line": 652,
+    "snippet": "background-clip: text + gradient"
+  },
+  {
+    "antipattern": "em-dash-overuse",
+    "name": "em-dash-overuse",
+    "description": "Em-dash saturation in body copy is an AI cadence tell. Advisory only. Prefer commas, colons, periods, or parentheses.",
+    "severity": "advisory",
+    "category": "slop",
+    "file": "/proj/dist/blog.html",
+    "line": 0,
+    "snippet": "32 em-dashes in body text",
+    "advisory": true
+  }
+]
