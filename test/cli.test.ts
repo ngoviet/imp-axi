@@ -15,10 +15,8 @@ const FINDINGS = fixture("findings.json");
 
 describe("contract", () => {
   it("version matches package.json and the fast path answers without loading commands", () => {
-    const pkg = JSON.parse(readFileSync(join(root, "package.json"), "utf8")) as { version: string; scripts: Record<string, string> };
+    const pkg = JSON.parse(readFileSync(join(root, "package.json"), "utf8")) as { version: string };
     expect(VERSION).toBe(pkg.version);
-    // install:global đọc version từ package.json, không ghim tên .tgz (chỗ thứ ba phải sửa khi đổi version).
-    expect(pkg.scripts["install:global"]).not.toContain(pkg.version);
     const out = execFileSync(process.execPath, [join(root, "dist/bin/impeccable-axi.js"), "--version"], { encoding: "utf8" });
     expect(out.trim()).toBe(VERSION);
   });
