@@ -5,6 +5,7 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { interleave, parseFindings, type Finding } from "../src/commands/detect.js";
 import { BACKUP_DIR, patchText } from "../src/commands/patch.js";
+import { cmdShellArgs, defaultRuntime } from "../src/runtime.js";
 import { VERSION } from "../src/version.js";
 import { fakeRuntime, fixture, runCli } from "./helpers.js";
 
@@ -13,8 +14,10 @@ const FINDINGS = fixture("findings.json");
 
 describe("contract", () => {
   it("version matches package.json and the fast path answers without loading commands", () => {
-    const pkg = JSON.parse(readFileSync(join(root, "package.json"), "utf8")) as { version: string };
+    const pkg = JSON.parse(readFileSync(join(root, "package.json"), "utf8")) as { version: string; scripts: Record<string, string> };
     expect(VERSION).toBe(pkg.version);
+    // install:global đọc version từ package.json, không ghim tên .tgz (chỗ thứ ba phải sửa khi đổi version).
+    expect(pkg.scripts["install:global"]).not.toContain(pkg.version);
     const out = execFileSync(process.execPath, [join(root, "dist/bin/impeccable-axi.js"), "--version"], { encoding: "utf8" });
     expect(out.trim()).toBe(VERSION);
   });
@@ -138,6 +141,82 @@ describe("detect", () => {
     const { out, code } = await runCli(["detect", "dist", "missing.html"], fakeRuntime({ code: 1, stdout: FINDINGS, stderr: "missing.html: not found" }));
     expect(code).toBe(0);
     expect(out).toContain("attention: \"some targets could not be scanned: missing.html: not found\"");
+  });
+
+  it("exit 1 with no findings is incomplete, not clean", async () => {
+    const { out, code } = await runCli(["detect", "missing.html"], fakeRuntime({ code: 1, stdout: "[]", stderr: "missing.html: not found" }));
+    expect(code).toBe(0);
+    expect(out).not.toContain("clean");
+    expect(out).toContain("status: \"incomplete: 0 findings in what was scanned, some targets failed (see attention)\"");
+    expect(out).toContain("missing.html: not found");
+  });
+});
+
+describe("engine via the skill launcher", () => {
+  const exe = process.platform === "win32" ? "impeccable.exe" : "impeccable";
+  const launcherName = process.platform === "win32" ? "impeccable.cmd" : "impeccable";
+
+  function launcherSkill(): { rt: ReturnType<typeof fakeRuntime>; launcher: string; cached: string } {
+    const base = mkdtempSync(join(tmpdir(), "iaxi-launcher-"));
+    const skill = join(base, "skill");
+    mkdirSync(join(skill, "scripts"), { recursive: true });
+    writeFileSync(join(skill, "scripts", "VERSION"), "0.1.16\n");
+    const launcher = join(skill, "scripts", launcherName);
+    writeFileSync(launcher, "");
+    const cacheHome = join(base, ".impeccable");
+    const cached = join(cacheHome, "bin", "0.1.16", exe);
+    const rt = fakeRuntime({ code: 0, stdout: "[]" }, { env: { IMPECCABLE_SKILL_DIR: skill, IMPECCABLE_HOME: cacheHome } });
+    return { rt, launcher, cached };
+  }
+
+  it("runs engine-probe first, then scans with the downloaded binary so targets never go through cmd.exe", async () => {
+    const { rt, launcher, cached } = launcherSkill();
+    const run = rt.run;
+    rt.run = async (cmd, args) => {
+      // launcher giả: engine-probe "tải" binary vào cache như launcher thật.
+      if (args[0] === "engine-probe") {
+        mkdirSync(join(cached, ".."), { recursive: true });
+        writeFileSync(cached, "");
+      }
+      return run(cmd, args);
+    };
+    await runCli(["detect", "my site/dist"], rt);
+    expect(rt.calls).toEqual([
+      [launcher, "engine-probe"],
+      [cached, "detect", "--json", "my site/dist"],
+    ]);
+  });
+
+  it("falls back to scanning through the launcher when the probe leaves no cached binary", async () => {
+    const { rt, launcher } = launcherSkill();
+    await runCli(["detect", "dist"], rt);
+    expect(rt.calls).toEqual([
+      [launcher, "engine-probe"],
+      [launcher, "detect", "--json", "dist"],
+    ]);
+  });
+
+  it("quotes cmd.exe arguments and refuses the ones cmd.exe would rewrite", () => {
+    expect(cmdShellArgs("C:\\a b\\impeccable.cmd", ["x&y", "D:\\site\\", "50%20off"], {})).toEqual({
+      cmd: '"C:\\a b\\impeccable.cmd"',
+      args: ['"x&y"', '"D:\\site\\\\"', '"50%20off"'],
+    });
+    expect(cmdShellArgs("l.cmd", ['say "hi"'], {})).toHaveProperty("error");
+    expect(cmdShellArgs("l.cmd", ["a\nb"], {})).toHaveProperty("error");
+    expect(cmdShellArgs("l.cmd", ["%Path%"], { PATH: "C:\\Windows" })).toHaveProperty("error");
+    expect(cmdShellArgs("l.cmd", ["%NOT_SET%"], { PATH: "C:\\Windows" })).not.toHaveProperty("error");
+  });
+
+  it.runIf(process.platform === "win32")("a real .cmd in a folder with spaces gets every argument unchanged", async () => {
+    const dir = join(mkdtempSync(join(tmpdir(), "iaxi-cmd-")), "dir with space");
+    mkdirSync(dir);
+    writeFileSync(join(dir, "echo.js"), "console.log(JSON.stringify(process.argv.slice(2)));\n");
+    // Giống launcher thật: chuyển %* nguyên vẹn sang binary.
+    writeFileSync(join(dir, "launcher.cmd"), `@echo off\r\n"${process.execPath}" "%~dp0echo.js" %*\r\nexit /b %errorlevel%\r\n`);
+    const args = ["detect", "--json", "my site/dist", "http://h/?a=1&echo INJECTED", "a|b", "c^d", "wow!", "D:\\x y\\"];
+    const r = await defaultRuntime().run(join(dir, "launcher.cmd"), args, 30_000);
+    expect(r.code).toBe(0);
+    expect(JSON.parse(r.stdout.trim())).toEqual(args);
   });
 });
 

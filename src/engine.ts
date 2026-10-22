@@ -5,12 +5,18 @@ import type { Runtime } from "./runtime.js";
 
 export interface Engine {
   path: string;
-  /** env = IMPECCABLE_BIN · cache = binary đã tải theo VERSION của skill · launcher = script của skill (tự tải lần đầu). */
-  via: "env" | "cache" | "launcher";
+  /**
+   * env = IMPECCABLE_BIN · sibling = binary đóng gói cạnh launcher (scripts/bin/<os>-<arch>/) ·
+   * cache = binary đã tải theo VERSION của skill · launcher = script của skill (tự tải lần đầu).
+   */
+  via: "env" | "sibling" | "cache" | "launcher";
 }
 
 const IS_WIN = process.platform === "win32";
 const EXE = IS_WIN ? "impeccable.exe" : "impeccable";
+// Cùng cách đặt tên với launcher của skill (windows-x64, darwin-arm64, linux-x64…).
+const OS = IS_WIN ? "windows" : process.platform;
+const ARCH = process.arch === "arm64" ? "arm64" : "x64";
 
 /** Thư mục skill Impeccable: IMPECCABLE_SKILL_DIR hoặc ~/.claude/skills/impeccable. */
 export function skillDir(rt: Runtime): string {
@@ -34,6 +40,8 @@ export function skillEngineVersion(rt: Runtime): string | undefined {
 export function findEngine(rt: Runtime): Engine | undefined {
   const envBin = rt.env["IMPECCABLE_BIN"];
   if (envBin && existsSync(envBin)) return { path: envBin, via: "env" };
+  const sibling = join(skillDir(rt), "scripts", "bin", `${OS}-${ARCH}`, EXE);
+  if (existsSync(sibling)) return { path: sibling, via: "sibling" };
   const version = skillEngineVersion(rt);
   if (version) {
     const cacheRoot = rt.env["IMPECCABLE_HOME"] || join(rt.home, ".impeccable");
@@ -54,4 +62,17 @@ export function requireEngine(rt: Runtime): Engine {
     ]);
   }
   return engine;
+}
+
+/**
+ * Engine cho một lượt quét. Còn phải qua launcher thì cho nó chạy `engine-probe` trước (tải engine
+ * về cache, không kèm đối số nào của người dùng) rồi tìm lại: có binary thì đối số đi thẳng vào
+ * binary, khỏi qua cmd.exe. Probe hỏng hay launcher dùng engine ngoài cache ⇒ quét qua launcher.
+ */
+export async function prepareEngine(rt: Runtime): Promise<Engine> {
+  const engine = requireEngine(rt);
+  if (engine.via !== "launcher") return engine;
+  await rt.run(engine.path, ["engine-probe"]);
+  const again = findEngine(rt);
+  return again && again.via !== "launcher" ? again : engine;
 }

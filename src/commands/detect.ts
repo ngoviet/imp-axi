@@ -1,7 +1,7 @@
 import { readdirSync, statSync } from "node:fs";
 import { extname, join, resolve } from "node:path";
 import { type FlagSpec, listFlag, parseCommandArgs } from "../args.js";
-import { requireEngine } from "../engine.js";
+import { prepareEngine } from "../engine.js";
 import { fail } from "../errors.js";
 import type { Runtime } from "../runtime.js";
 import { assertFields, clip, commandLine, quote, type Row, shortPath, tally } from "../views.js";
@@ -29,7 +29,7 @@ flags[17]:
 notes[3]:
   Exit 0 whenever the scan ran, clean or not: read \`status\`. Exit 1 = engine missing or scan failed
   Source files (.jsx/.tsx/.css) get regex rules only; built .html or a dev-server URL runs the full rule set
-  Engine: IMPECCABLE_BIN, else ~/.impeccable/bin/<skill VERSION>/, else the skill launcher (downloads once)
+  Engine: IMPECCABLE_BIN, else the skill's bundled binary, else ~/.impeccable/bin/<skill VERSION>/, else the skill launcher (downloads once)
 examples[3]:
   impeccable-axi detect src
   impeccable-axi detect dist --rule low-contrast,tiny-text
@@ -91,7 +91,7 @@ export async function detectCommand(args: string[], rt: Runtime): Promise<Record
   const ruleFilter = listFlag(p, "rule");
   const fileFilter = p.str("file")?.toLowerCase();
 
-  const engine = requireEngine(rt);
+  const engine = await prepareEngine(rt);
   const engineArgs = ["detect", "--json"];
   for (const f of ENGINE_STRING_FLAGS) {
     const v = p.str(f);
@@ -104,7 +104,7 @@ export async function detectCommand(args: string[], rt: Runtime): Promise<Record
   if (res.code === 127) {
     fail(`Impeccable engine did not start (${engine.via}: ${engine.path})`, "ENGINE_MISSING", [
       clip(res.stderr.trim().split(/\r?\n/)[0] ?? "", 300),
-      "Run the skill launcher once with `engine-probe` to download the engine, or set IMPECCABLE_BIN",
+      "Set IMPECCABLE_BIN to an engine binary from https://github.com/pbakaus/impeccable/releases",
     ].filter(Boolean));
   }
   const all = parseFindings(res.stdout);
@@ -122,17 +122,21 @@ export async function detectCommand(args: string[], rt: Runtime): Promise<Record
   const advisoryCount = all.filter(isAdvisory).length;
   const fileCount = new Set(all.map((f) => f.file)).size;
 
+  // Exit 1 = có đích không quét được: 0 phát hiện khi đó không phải "clean".
+  const partial = res.code === 1;
   const out: Record<string, unknown> = {
     target: cdp ? `cdp ${cdp}${p.str("target") ? ` (${p.str("target")})` : ""}` : targets.join(" "),
     status: all.length
       ? `${all.length} findings (${all.length - advisoryCount} primary, ${advisoryCount} advisory) in ${fileCount} ${fileCount === 1 ? "file" : "files"}`
-      : "clean: 0 findings",
+      : partial
+        ? "incomplete: 0 findings in what was scanned, some targets failed (see attention)"
+        : "clean: 0 findings",
   };
   if (!cdp && !targets.some((t) => hasMarkup(t, rt.cwd))) {
     out["coverage"] =
       "regex rules only (no .html or URL in the targets): element rules such as low-contrast and tiny-text did not run, so this is an undercount. Scan built .html or a dev-server URL for the full check";
   }
-  if (res.code === 1) {
+  if (partial) {
     out["attention"] = `some targets could not be scanned: ${clip(res.stderr.trim().split(/\r?\n/).filter(Boolean).join(" | "), 400)}`;
   }
   if (filtered) {
@@ -162,6 +166,7 @@ export async function detectCommand(args: string[], rt: Runtime): Promise<Record
     help.push("After fixing, rerun the same command to confirm the counts dropped");
   } else {
     out["findings"] = "0 findings found";
+    if (partial) help.push("Fix or drop the targets named in `attention`, then rerun");
     if (filtered && all.length) {
       help.push(`Rules present: ${tally(all, (f) => f.antipattern).map(([r]) => r).join(", ")}`);
     }

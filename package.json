@@ -32,7 +32,7 @@
     "lint": "eslint .",
     "test": "vitest run",
     "check": "tsc -p tsconfig.json && eslint . && vitest run",
-    "install:global": "tsup && node -e \"require('fs').mkdirSync('build/pack',{recursive:true})\" && npm pack --pack-destination build/pack && npm install -g build/pack/impeccable-axi-0.1.0.tgz"
+    "install:global": "tsup && node -e \"require('fs').mkdirSync('build/pack',{recursive:true})\" && npm pack --pack-destination build/pack && node -e \"require('child_process').execSync('npm install -g build/pack/impeccable-axi-' + require('./package.json').version + '.tgz', { stdio: 'inherit' })\""
   },
   "dependencies": {
     "axi-sdk-js": "^0.1.13"
