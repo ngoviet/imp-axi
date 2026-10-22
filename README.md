@@ -16,8 +16,8 @@ Measured on a 25-page Vite/React site (engine 0.1.16, 634 findings): raw JSON 43
 
 ## Install
 
-Needs Node ≥ 20 and the Impeccable skill (its engine binary is found in `~/.impeccable/bin/<VERSION>/`, or set
-`IMPECCABLE_BIN`).
+Needs Node ≥ 20 and the Impeccable skill (its engine binary is bundled in the skill, downloaded by its
+launcher to `~/.impeccable/bin/<VERSION>/`, or set via `IMPECCABLE_BIN`).
 
 ```bash
 npm ci && npm run install:global
