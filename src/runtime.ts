@@ -38,7 +38,9 @@ export function cmdShellArgs(
 export function defaultRuntime(): Runtime {
   const run: Runtime["run"] = (cmd, args, timeoutMs = 600_000) =>
     new Promise((resolve) => {
-      const opts = { timeout: timeoutMs, windowsHide: true };
+      // stdin đóng: engine/launcher mà chờ nhập thì thoát ngay thay vì treo tới hết timeout.
+      const opts = { timeout: timeoutMs, windowsHide: true, stdio: ["ignore", "pipe", "pipe"] as ["ignore", "pipe", "pipe"] };
+      const started = Date.now();
       let child;
       if (IS_CMD.test(cmd)) {
         const quoted = cmdShellArgs(cmd, args, process.env);
@@ -53,7 +55,13 @@ export function defaultRuntime(): Runtime {
       child.stdout.setEncoding("utf8").on("data", (d: string) => (stdout += d));
       child.stderr.setEncoding("utf8").on("data", (d: string) => (stderr += d));
       child.on("error", (e) => resolve({ code: 127, stdout, stderr: stderr + e.message }));
-      child.on("close", (code) => resolve({ code: code ?? 1, stdout, stderr }));
+      // Bị kill (timeout hoặc tín hiệu ngoài) ⇒ 124 như `timeout(1)`, để bên gọi báo đúng nguyên nhân.
+      child.on("close", (code, signal) => {
+        if (code !== null || !signal) return resolve({ code: code ?? 1, stdout, stderr });
+        const secs = Math.round((Date.now() - started) / 1000);
+        const why = Date.now() - started >= timeoutMs ? `timed out after ${secs}s` : `killed by ${signal} after ${secs}s`;
+        resolve({ code: 124, stdout, stderr: `${stderr}${stderr && !stderr.endsWith("\n") ? "\n" : ""}${cmd}: ${why}` });
+      });
     });
   return { env: process.env, home: homedir(), cwd: process.cwd(), run };
 }

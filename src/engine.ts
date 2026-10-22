@@ -53,10 +53,18 @@ export function findEngine(rt: Runtime): Engine | undefined {
   return undefined;
 }
 
+/** IMPECCABLE_BIN đặt mà file không có ⇒ trả đường dẫn đó (findEngine lặng lẽ bỏ qua, nên phải báo ở chỗ khác). */
+export function brokenEnvBin(rt: Runtime): string | undefined {
+  const envBin = rt.env["IMPECCABLE_BIN"];
+  return envBin && !existsSync(envBin) ? envBin : undefined;
+}
+
 export function requireEngine(rt: Runtime): Engine {
   const engine = findEngine(rt);
   if (!engine) {
+    const badBin = brokenEnvBin(rt);
     fail(`Impeccable engine not found (skill dir: ${skillDir(rt)})`, "ENGINE_MISSING", [
+      ...(badBin ? [`IMPECCABLE_BIN is set but ${badBin} does not exist`] : []),
       "Install the Impeccable skill into ~/.claude/skills/impeccable (or set IMPECCABLE_SKILL_DIR)",
       "Or set IMPECCABLE_BIN to an engine binary from https://github.com/pbakaus/impeccable/releases",
     ]);

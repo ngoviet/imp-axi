@@ -1,15 +1,20 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { parseCommandArgs } from "../args.js";
-import { findEngine, skillDir, skillEngineVersion } from "../engine.js";
+import { brokenEnvBin, findEngine, skillDir, skillEngineVersion } from "../engine.js";
 import type { Runtime } from "../runtime.js";
 
 export const HOME_HELP = `usage: impeccable-axi home
 description: Engine and skill status plus the current project's design context files. Same as running with no arguments
 `;
 
-function tilde(p: string, home: string): string {
-  return p.toLowerCase().startsWith(home.toLowerCase()) ? `~${p.slice(home.length).replace(/\\/g, "/")}` : p;
+/** Đường dẫn dưới home ⇒ `~/…`. Phải khớp trọn thư mục (home `/home/al` không ăn `/home/alice`); hoa thường chỉ bỏ qua trên Windows. */
+export function tilde(p: string, home: string): string {
+  const fold = (s: string) => (process.platform === "win32" ? s.toLowerCase() : s);
+  const h = home.replace(/[\\/]+$/, "");
+  if (!h || !fold(p).startsWith(fold(h))) return p;
+  const rest = p.slice(h.length);
+  return rest === "" || rest[0] === "/" || rest[0] === "\\" ? `~${rest.replace(/\\/g, "/")}` : p;
 }
 
 export function homeHeader(description: string, rt: Runtime): Record<string, unknown> {
@@ -43,6 +48,8 @@ export async function homeView(args: string[], rt: Runtime): Promise<Record<stri
   const help = [
     "Run `impeccable-axi detect <dir|file|url>` to scan (built .html or a dev-server URL runs every rule)",
   ];
+  const badBin = brokenEnvBin(rt);
+  if (badBin) help.unshift(`Fix or unset IMPECCABLE_BIN: ${badBin} does not exist, so it is ignored`);
   if (skillState.endsWith("not patched")) help.push("Run `impeccable-axi patch-skill` so the Impeccable skill uses impeccable-axi for detect");
   if (!existsSync(join(rt.cwd, "PRODUCT.md"))) help.push("Run `/impeccable init` in Claude Code to write PRODUCT.md / DESIGN.md for this project");
   return {

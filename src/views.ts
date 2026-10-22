@@ -32,6 +32,8 @@ export function commandLine(prefix: string, args: string[], drop: readonly strin
   for (let i = 0; i < args.length; i++) {
     const a = args[i]!;
     if (a === "--full") continue;
+    // parseArgs nhận cả `--limit=5` ⇒ bỏ dạng này giống `--limit 5`.
+    if (a.startsWith("--") && withValue.has(a.split("=")[0]!) && a.includes("=")) continue;
     if (withValue.has(a)) {
       i++;
       continue;

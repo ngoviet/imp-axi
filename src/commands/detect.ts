@@ -1,7 +1,7 @@
 import { readdirSync, statSync } from "node:fs";
 import { extname, join, resolve } from "node:path";
 import { type FlagSpec, listFlag, parseCommandArgs } from "../args.js";
-import { prepareEngine } from "../engine.js";
+import { brokenEnvBin, prepareEngine } from "../engine.js";
 import { fail } from "../errors.js";
 import type { Runtime } from "../runtime.js";
 import { assertFields, clip, commandLine, quote, type Row, shortPath, tally } from "../views.js";
@@ -89,7 +89,8 @@ export async function detectCommand(args: string[], rt: Runtime): Promise<Record
   const fields = p.global.fields ?? [...DEFAULT_FIELDS];
   assertFields(fields, AVAILABLE_FIELDS);
   const ruleFilter = listFlag(p, "rule");
-  const fileFilter = p.str("file")?.toLowerCase();
+  // shortPath đổi `\` thành `/` ⇒ `--file dist\about.html` (Windows) cũng phải đổi mới khớp.
+  const fileFilter = p.str("file")?.replace(/\\/g, "/").toLowerCase();
 
   const engine = await prepareEngine(rt);
   const engineArgs = ["detect", "--json"];
@@ -101,6 +102,12 @@ export async function detectCommand(args: string[], rt: Runtime): Promise<Record
   engineArgs.push(...targets);
 
   const res = await rt.run(engine.path, engineArgs);
+  if (res.code === 124) {
+    fail("detect: the engine timed out or was killed before it finished", "SCAN_FAILED", [
+      clip(res.stderr.trim().split(/\r?\n/).pop() ?? "", 300),
+      "Scan a built folder or fewer URLs instead of the whole repo",
+    ].filter(Boolean));
+  }
   if (res.code === 127) {
     fail(`Impeccable engine did not start (${engine.via}: ${engine.path})`, "ENGINE_MISSING", [
       clip(res.stderr.trim().split(/\r?\n/)[0] ?? "", 300),
@@ -132,9 +139,14 @@ export async function detectCommand(args: string[], rt: Runtime): Promise<Record
         ? "incomplete: 0 findings in what was scanned, some targets failed (see attention)"
         : "clean: 0 findings",
   };
-  if (!cdp && !targets.some((t) => hasMarkup(t, rt.cwd))) {
+  const scan = cdp ? undefined : scanTargets(targets, rt.cwd);
+  if (scan && !scan.markup) {
     out["coverage"] =
       "regex rules only (no .html or URL in the targets): element rules such as low-contrast and tiny-text did not run, so this is an undercount. Scan built .html or a dev-server URL for the full check";
+  } else if (scan?.components) {
+    // vd `detect .` ở gốc dự án Vite: index.html mẫu có luật phần tử, còn component thì không.
+    out["coverage"] =
+      `partial: element rules ran on the .html only; ${scan.components} component ${scan.components === 1 ? "file" : "files"} (.jsx/.tsx/.vue/.svelte/.astro) got regex rules only. Scan built .html or a dev-server URL to check what they render`;
   }
   if (partial) {
     out["attention"] = `some targets could not be scanned: ${clip(res.stderr.trim().split(/\r?\n/).filter(Boolean).join(" | "), 400)}`;
@@ -171,6 +183,8 @@ export async function detectCommand(args: string[], rt: Runtime): Promise<Record
       help.push(`Rules present: ${tally(all, (f) => f.antipattern).map(([r]) => r).join(", ")}`);
     }
   }
+  const badBin = brokenEnvBin(rt);
+  if (badBin) help.push(`Fix or unset IMPECCABLE_BIN: ${badBin} does not exist, so ${engine.via} was used`);
   return { ...out, help };
 }
 
@@ -191,7 +205,11 @@ export function parseFindings(stdout: string): Finding[] | undefined {
   } catch {
     return undefined;
   }
-  const list = Array.isArray(data) ? data : (data as { findings?: unknown }).findings;
+  const list = Array.isArray(data)
+    ? data
+    : data !== null && typeof data === "object"
+      ? (data as { findings?: unknown }).findings
+      : undefined;
   if (!Array.isArray(list)) return undefined;
   return list.filter((f): f is Finding => typeof f === "object" && f !== null && typeof (f as Finding).antipattern === "string");
 }
@@ -256,35 +274,65 @@ function toRow(f: Finding, fields: readonly string[], cwd: string): Row {
 }
 
 const MARKUP = new Set([".html", ".htm"]);
+/**
+ * File component: engine chỉ chạy luật regex trên chúng (đo trên engine 0.1.16: .css/.scss/.js/.ts cũng
+ * vậy, nhưng chúng có cả trong bản build nên không dùng làm dấu hiệu "đây là mã nguồn").
+ */
+const COMPONENT = new Set([".jsx", ".tsx", ".vue", ".svelte", ".astro"]);
 const SKIP_DIRS = new Set(["node_modules", ".git"]);
 
-/** Đích có chạy được luật phần tử không: URL, file .html, hoặc thư mục chứa .html (duyệt tối đa 20k mục). */
-export function hasMarkup(target: string, cwd: string): boolean {
-  if (/^[a-z]+:\/\//i.test(target)) return true;
-  const abs = resolve(cwd, target);
-  let st;
-  try {
-    st = statSync(abs);
-  } catch {
-    return true; // không đọc được ⇒ để engine báo lỗi, đừng chèn ghi chú sai
-  }
-  if (st.isFile()) return MARKUP.has(extname(abs).toLowerCase());
-  const stack = [abs];
+export interface TargetScan {
+  /** Có URL, file .html hoặc thư mục chứa .html ⇒ luật phần tử có chạy. */
+  markup: boolean;
+  /** Số file component trong đích (chỉ được luật regex). */
+  components: number;
+}
+
+/**
+ * Duyệt đích (tối đa 20k mục) để ghi chú `coverage`. Cây quá lớn hay đích không đọc được ⇒ coi như
+ * có markup và ngừng đếm: thà thiếu ghi chú còn hơn khẳng định sai.
+ */
+export function scanTargets(targets: readonly string[], cwd: string): TargetScan {
+  const out: TargetScan = { markup: false, components: 0 };
   let budget = 20_000;
-  while (stack.length && budget > 0) {
-    const dir = stack.pop()!;
-    let entries;
-    try {
-      entries = readdirSync(dir, { withFileTypes: true });
-    } catch {
+  const visit = (name: string) => {
+    const ext = extname(name).toLowerCase();
+    if (MARKUP.has(ext)) out.markup = true;
+    else if (COMPONENT.has(ext)) out.components++;
+  };
+  for (const target of targets) {
+    if (/^[a-z]+:\/\//i.test(target)) {
+      out.markup = true;
       continue;
     }
-    for (const e of entries) {
-      if (--budget <= 0) return true; // cây quá lớn: đừng khẳng định thiếu HTML
-      if (e.isDirectory()) {
-        if (!SKIP_DIRS.has(e.name)) stack.push(join(dir, e.name));
-      } else if (MARKUP.has(extname(e.name).toLowerCase())) return true;
+    const abs = resolve(cwd, target);
+    let st;
+    try {
+      st = statSync(abs);
+    } catch {
+      out.markup = true; // không đọc được ⇒ để engine báo lỗi, đừng chèn ghi chú sai
+      continue;
+    }
+    if (st.isFile()) {
+      visit(abs);
+      continue;
+    }
+    const stack = [abs];
+    while (stack.length) {
+      const dir = stack.pop()!;
+      let entries;
+      try {
+        entries = readdirSync(dir, { withFileTypes: true });
+      } catch {
+        continue;
+      }
+      for (const e of entries) {
+        if (--budget <= 0) return { markup: true, components: 0 };
+        if (e.isDirectory()) {
+          if (!SKIP_DIRS.has(e.name)) stack.push(join(dir, e.name));
+        } else visit(e.name);
+      }
     }
   }
-  return false;
+  return out;
 }

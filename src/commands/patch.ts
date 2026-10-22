@@ -1,5 +1,5 @@
 import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
-import { dirname, join } from "node:path";
+import { dirname, join, resolve } from "node:path";
 import { parseCommandArgs } from "../args.js";
 import { skillDir } from "../engine.js";
 import { fail } from "../errors.js";
@@ -46,7 +46,7 @@ export function patchText(name: string, text: string): { text: string; replaceme
     return `impeccable-axi detect${before}${after}`;
   });
   if (n && out.includes(EXIT_LINE)) {
-    out = out.replace(EXIT_LINE, EXIT_LINE_NEW);
+    out = out.replaceAll(EXIT_LINE, EXIT_LINE_NEW);
     n++;
   }
   // Câu ngay sau lệnh --cdp (audit.md, critique.md) còn nói "JSON".
@@ -80,7 +80,8 @@ export async function patchCommand(args: string[], rt: Runtime): Promise<Record<
     },
     { max: 0 },
   );
-  const dir = p.str("skill-dir") ?? skillDir(rt);
+  const flagDir = p.str("skill-dir");
+  const dir = flagDir === undefined ? skillDir(rt) : resolve(rt.cwd, flagDir);
   if (!existsSync(join(dir, "SKILL.md"))) {
     fail(`no Impeccable skill at ${dir}`, "SKILL_MISSING", ["Pass --skill-dir <path> or set IMPECCABLE_SKILL_DIR"]);
   }

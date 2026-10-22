@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { interleave, parseFindings, type Finding } from "../src/commands/detect.js";
+import { tilde } from "../src/commands/home.js";
 import { BACKUP_DIR, patchText } from "../src/commands/patch.js";
 import { cmdShellArgs, defaultRuntime } from "../src/runtime.js";
 import { VERSION } from "../src/version.js";
@@ -143,6 +144,50 @@ describe("detect", () => {
     expect(out).toContain("attention: \"some targets could not be scanned: missing.html: not found\"");
   });
 
+  it("--file accepts Windows backslashes", async () => {
+    const { out } = await runCli(["detect", "dist", "--file", "dist\\about.html"], fakeRuntime({ code: 2, stdout: FINDINGS }));
+    expect(out).toContain(": 3 of 11");
+  });
+
+  it("--limit=n is dropped from suggested commands like --limit n", async () => {
+    const { out } = await runCli(["detect", "dist", "--limit=2"], fakeRuntime({ code: 2, stdout: FINDINGS }));
+    expect(out).toContain("count: 2 of 11 total");
+    expect(out).toContain("Run `impeccable-axi detect dist --full`");
+  });
+
+  it("source plus .html targets get a partial coverage note", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "iaxi-vite-"));
+    mkdirSync(join(dir, "src"));
+    writeFileSync(join(dir, "index.html"), "<div id=root></div>\n");
+    writeFileSync(join(dir, "src", "App.tsx"), "export default () => null;\n");
+    writeFileSync(join(dir, "src", "Card.vue"), "<template><div/></template>\n");
+    const { out } = await runCli(["detect", "."], fakeRuntime({ code: 0, stdout: "[]" }, { cwd: dir }));
+    expect(out).toContain("partial: element rules ran on the .html only; 2 component files");
+    const built = await runCli(["detect", "index.html"], fakeRuntime({ code: 0, stdout: "[]" }, { cwd: dir }));
+    expect(built.out).not.toContain("coverage");
+  });
+
+  it("an engine killed by the timeout is SCAN_FAILED with the reason", async () => {
+    const { out, code } = await runCli(["detect", "dist"], fakeRuntime({ code: 124, stdout: "[{\"antip", stderr: "impeccable: timed out after 600s" }));
+    expect(code).toBe(1);
+    expect(out).toContain("code: SCAN_FAILED");
+    expect(out).toContain("timed out after 600s");
+  });
+
+  it("JSON null from the engine is SCAN_FAILED, not a crash", async () => {
+    expect(parseFindings("null")).toBeUndefined();
+    const { out, code } = await runCli(["detect", "dist"], fakeRuntime({ code: 0, stdout: "null" }));
+    expect(code).toBe(1);
+    expect(out).toContain("code: SCAN_FAILED");
+  });
+
+  it("a broken IMPECCABLE_BIN is named instead of silently ignored", async () => {
+    const missing = join(tmpdir(), "no-such-impeccable.exe");
+    const { out, code } = await runCli(["detect", "dist"], fakeRuntime({ code: 0 }, { env: { IMPECCABLE_BIN: missing } }));
+    expect(code).toBe(1);
+    expect(out).toContain("IMPECCABLE_BIN is set but");
+  });
+
   it("exit 1 with no findings is incomplete, not clean", async () => {
     const { out, code } = await runCli(["detect", "missing.html"], fakeRuntime({ code: 1, stdout: "[]", stderr: "missing.html: not found" }));
     expect(code).toBe(0);
@@ -207,6 +252,15 @@ describe("engine via the skill launcher", () => {
     expect(cmdShellArgs("l.cmd", ["%NOT_SET%"], { PATH: "C:\\Windows" })).not.toHaveProperty("error");
   });
 
+  it("the real runtime closes stdin and reports a timeout as exit 124", async () => {
+    const rt = defaultRuntime();
+    const eof = await rt.run(process.execPath, ["-e", "process.stdin.resume().on('end', () => console.log('eof'))"], 30_000);
+    expect(eof.stdout.trim()).toBe("eof");
+    const slow = await rt.run(process.execPath, ["-e", "setTimeout(() => {}, 30000)"], 300);
+    expect(slow.code).toBe(124);
+    expect(slow.stderr).toMatch(/timed out after \d+s/);
+  });
+
   it.runIf(process.platform === "win32")("a real .cmd in a folder with spaces gets every argument unchanged", async () => {
     const dir = join(mkdtempSync(join(tmpdir(), "iaxi-cmd-")), "dir with space");
     mkdirSync(dir);
@@ -234,6 +288,16 @@ describe("patch-skill", () => {
     expect(b).toContain("impeccable-axi detect --scope layout [target files or dirs]\n");
     expect(b).toContain("impeccable-axi exits 0 whenever the scan ran");
     expect(patchText("hooks.md", 'Run `"<skill-base-dir>/scripts/impeccable" detect <path>` first').replacements).toBe(0);
+    expect(patchText("two.md", `${BLOCK}\n${BLOCK}`).text).not.toContain("- Exit code 0 = clean; 2 = findings.");
+  });
+
+  it("--skill-dir is resolved against the working directory", async () => {
+    const base = mkdtempSync(join(tmpdir(), "iaxi-rel-"));
+    mkdirSync(join(base, "skill"));
+    writeFileSync(join(base, "skill", "SKILL.md"), "---\nname: impeccable\n---\n");
+    const { out, code } = await runCli(["patch-skill", "--skill-dir", "skill", "--dry-run"], fakeRuntime({ code: 0 }, { cwd: base }));
+    expect(code).toBe(0);
+    expect(out).toContain("would patch 1 files");
   });
 
   it("patches a skill folder idempotently and reverts it", async () => {
@@ -279,6 +343,21 @@ describe("home", () => {
     expect(out).toContain("not patched");
     expect(out).toContain("impeccable-axi patch-skill");
     expect(rt.calls[0]?.slice(1)).toEqual(["engine-probe"]);
+  });
+
+  it("names a broken IMPECCABLE_BIN in help", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "iaxi-home-"));
+    writeFileSync(join(dir, "SKILL.md"), "---\nname: impeccable\nversion: 4.7.0\n---\n");
+    const missing = join(tmpdir(), "no-such-impeccable.exe");
+    const { out } = await runCli([], fakeRuntime({ code: 0 }, { env: { IMPECCABLE_BIN: missing, IMPECCABLE_SKILL_DIR: dir } }));
+    expect(out).toContain("Fix or unset IMPECCABLE_BIN");
+  });
+
+  it("tilde only replaces a whole home directory", () => {
+    expect(tilde("/home/al/x", "/home/al")).toBe("~/x");
+    expect(tilde("/home/al", "/home/al/")).toBe("~");
+    expect(tilde("/home/alice/x", "/home/al")).toBe("/home/alice/x");
+    expect(tilde("C:\\Users\\Al\\.impeccable", "C:\\Users\\Al")).toBe("~/.impeccable");
   });
 });
 
