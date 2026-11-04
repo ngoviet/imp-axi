@@ -1,4 +1,4 @@
-# Cấu hình no-mistakes cho repo impeccable-axi.
+# Cấu hình no-mistakes cho repo imp-axi.
 #
 # ⚠️ Các field ĐIỀU KHIỂN (commands, agent, no_ci, gates…) chỉ được đọc từ
 # **default branch** — cố ý, để nhánh do người khác đẩy lên không tự khai báo hay

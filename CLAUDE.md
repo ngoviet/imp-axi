@@ -1,4 +1,4 @@
-# CLAUDE.md — impeccable-axi
+# CLAUDE.md — imp-axi
 
 CLI TypeScript theo chuẩn AXI (axi-sdk-js), khuôn theo `D:\code\social-axi`. Tạo vòng 87 (2026-10-22) sau khi đo
 `impeccable detect --json` trên `D:\code\sunhub.vn/dist`: 634 phát hiện = 436 KB, 62% là mô tả luật lặp lại.
@@ -23,7 +23,7 @@ CLI TypeScript theo chuẩn AXI (axi-sdk-js), khuôn theo `D:\code\social-axi`. 
 ## Bẫy đã gặp
 
 - Engine trả `line: 0` cho luật phần tử HTML ⇒ in ô trống.
-- Engine exit 2 = có phát hiện (không phải lỗi) ⇒ impeccable-axi exit 0; exit 1 = có đích không quét được (vẫn có JSON).
+- Engine exit 2 = có phát hiện (không phải lỗi) ⇒ imp-axi exit 0; exit 1 = có đích không quét được (vẫn có JSON).
 - `detect --json` không in số file đã quét và không báo "regex only" ⇒ `scanTargets` tự suy ra từ đích. Đo engine
   0.1.16: luật regex chạy trên `.css .scss .js .ts .jsx .tsx .vue .svelte .astro`; chỉ component (`.jsx/.tsx/.vue/
   .svelte/.astro`) mới là dấu hiệu "mã nguồn", vì css/js có cả trong bản build.

@@ -17,7 +17,7 @@ describe("contract", () => {
   it("version matches package.json and the fast path answers without loading commands", () => {
     const pkg = JSON.parse(readFileSync(join(root, "package.json"), "utf8")) as { version: string };
     expect(VERSION).toBe(pkg.version);
-    const out = execFileSync(process.execPath, [join(root, "dist/bin/impeccable-axi.js"), "--version"], { encoding: "utf8" });
+    const out = execFileSync(process.execPath, [join(root, "dist/bin/imp-axi.js"), "--version"], { encoding: "utf8" });
     expect(out.trim()).toBe(VERSION);
   });
 
@@ -96,7 +96,7 @@ describe("detect", () => {
     const rt = () => fakeRuntime({ code: 2, stdout: JSON.stringify(urlFindings) });
     const all = await runCli(["detect", ...pages, "--limit", "3"], rt());
     expect(all.out).toContain(`Add \`--file ${site}/\` to the same command to list one file`);
-    expect(all.out).not.toContain(`Run \`impeccable-axi detect ${site}/ ${site}/pricing`);
+    expect(all.out).not.toContain(`Run \`imp-axi detect ${site}/ ${site}/pricing`);
     const home = await runCli(["detect", ...pages, "--file", `${site}/`], rt());
     expect(home.out).toContain(`file~${site}/: 4 of 12`);
   });
@@ -150,7 +150,7 @@ describe("detect", () => {
   it("--limit=n is dropped from suggested commands like --limit n", async () => {
     const { out } = await runCli(["detect", "dist", "--limit=2"], fakeRuntime({ code: 2, stdout: FINDINGS }));
     expect(out).toContain("count: 2 of 11 total");
-    expect(out).toContain("Run `impeccable-axi detect dist --full`");
+    expect(out).toContain("Run `imp-axi detect dist --full`");
   });
 
   it("source plus .html targets get a partial coverage note", async () => {
@@ -278,13 +278,13 @@ describe("patch-skill", () => {
   const BLOCK = '```bash\n"<skill-base-dir>/scripts/impeccable" detect --json --scope layout [target files or dirs]\n```\n- Exit code 0 = clean; 2 = findings.\n';
 
   it("rewrites JSON-mode detect calls wherever --json sits", () => {
-    expect(patchText("routing.md", ROUTING).text).toBe("run `impeccable-axi detect <scan.targets joined by spaces>` once");
+    expect(patchText("routing.md", ROUTING).text).toBe("run `imp-axi detect <scan.targets joined by spaces>` once");
     expect(patchText("critique.md", CDP).text).toBe(
-      "Run `impeccable-axi detect --cdp 9222 --target <part of the page URL or title>`. It returns the same summary as a URL scan",
+      "Run `imp-axi detect --cdp 9222 --target <part of the page URL or title>`. It returns the same summary as a URL scan",
     );
     const b = patchText("layout.md", BLOCK).text;
-    expect(b).toContain("impeccable-axi detect --scope layout [target files or dirs]\n");
-    expect(b).toContain("impeccable-axi exits 0 whenever the scan ran");
+    expect(b).toContain("imp-axi detect --scope layout [target files or dirs]\n");
+    expect(b).toContain("imp-axi exits 0 whenever the scan ran");
     expect(patchText("hooks.md", 'Run `"<skill-base-dir>/scripts/impeccable" detect <path>` first').replacements).toBe(0);
     expect(patchText("two.md", `${BLOCK}\n${BLOCK}`).text).not.toContain("- Exit code 0 = clean; 2 = findings.");
   });
@@ -311,7 +311,7 @@ describe("patch-skill", () => {
     expect(first.code).toBe(0);
     expect(first.out).toContain("status: patched 3 files");
     expect(first.out).toContain("untouched: 1 text-mode detect calls left as they are");
-    expect(readFileSync(join(dir, "SKILL.md"), "utf8")).toContain("<!-- impeccable-axi:begin -->");
+    expect(readFileSync(join(dir, "SKILL.md"), "utf8")).toContain("<!-- imp-axi:begin -->");
     expect(existsSync(join(dir, BACKUP_DIR, "reference", "routing.md"))).toBe(true);
 
     const again = await runCli(["patch-skill"], rt);
@@ -339,7 +339,7 @@ describe("home", () => {
     expect(code).toBe(0);
     expect(out).toContain('engine: "0.1.16 (env:');
     expect(out).toContain("not patched");
-    expect(out).toContain("impeccable-axi patch-skill");
+    expect(out).toContain("imp-axi patch-skill");
     expect(rt.calls[0]?.slice(1)).toEqual(["engine-probe"]);
   });
 

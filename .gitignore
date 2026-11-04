@@ -19,7 +19,7 @@ node_modules/
 Thumbs.db
 desktop.ini
 
-# --- riêng impeccable-axi ---
+# --- riêng imp-axi ---
 dist/
 build/
 coverage/

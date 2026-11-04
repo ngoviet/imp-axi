@@ -50,7 +50,7 @@ export function parseCommandArgs(
   } catch (e) {
     fail(`${command}: ${(e as Error).message.split("\n")[0]}`, "VALIDATION_ERROR", [`Valid flags: ${valid.join(", ")}`]);
   }
-  const usageHelp = [`Run \`impeccable-axi ${command} --help\` for usage`];
+  const usageHelp = [`Run \`imp-axi ${command} --help\` for usage`];
   const { min = 0, max = min } = positionals;
   if (parsed.positionals.length < min) {
     fail(`${command}: missing argument${positionals.usage ? ` (${positionals.usage})` : ""}`, "VALIDATION_ERROR", usageHelp);

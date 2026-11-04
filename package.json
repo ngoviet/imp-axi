@@ -1,5 +1,5 @@
 {
-  "name": "impeccable-axi",
+  "name": "imp-axi",
   "version": "0.1.0",
   "description": "AXI wrapper for the Impeccable design detector: TOON summary by rule and file instead of hundreds of KB of JSON",
   "type": "module",
@@ -16,7 +16,7 @@
     "claude-code"
   ],
   "bin": {
-    "impeccable-axi": "dist/bin/impeccable-axi.js"
+    "imp-axi": "dist/bin/imp-axi.js"
   },
   "files": [
     "dist",
@@ -32,7 +32,7 @@
     "lint": "eslint .",
     "test": "vitest run",
     "check": "tsc -p tsconfig.json && eslint . && vitest run",
-    "install:global": "tsup && node -e \"require('fs').mkdirSync('build/pack',{recursive:true})\" && npm pack --pack-destination build/pack && node -e \"require('child_process').execSync('npm install -g build/pack/impeccable-axi-' + require('./package.json').version + '.tgz', { stdio: 'inherit' })\""
+    "install:global": "tsup && node -e \"require('fs').mkdirSync('build/pack',{recursive:true})\" && npm pack --pack-destination build/pack && node -e \"require('child_process').execSync('npm install -g build/pack/imp-axi-' + require('./package.json').version + '.tgz', { stdio: 'inherit' })\""
   },
   "dependencies": {
     "axi-sdk-js": "^0.1.13"

@@ -1,8 +1,8 @@
-# impeccable-axi
+# imp-axi
 
 AXI wrapper ([axi.md](https://axi.md)) for the detector of the [Impeccable](https://github.com/pbakaus/impeccable)
 design skill. `impeccable detect --json` repeats every rule's description on every finding; on a built site
-that reaches hundreds of KB, and an agent's shell tool cuts it off after ~30K characters. `impeccable-axi detect`
+that reaches hundreds of KB, and an agent's shell tool cuts it off after ~30K characters. `imp-axi detect`
 prints a TOON summary instead:
 
 - `status`: totals (primary / advisory / files)
@@ -21,17 +21,20 @@ launcher to `~/.impeccable/bin/<VERSION>/`, or set via `IMPECCABLE_BIN`).
 
 ```bash
 npm ci && npm run install:global
-impeccable-axi                 # engine + skill status
-impeccable-axi patch-skill     # make the Impeccable skill call impeccable-axi (reversible: --revert)
+imp-axi                # engine + skill status
+imp-axi patch-skill    # make the Impeccable skill call imp-axi (reversible: --revert)
 ```
+
+Formerly `impeccable-axi`. If a skill was patched by the old name, run `impeccable-axi patch-skill --revert`
+before uninstalling it (`npm uninstall -g impeccable-axi`), then `imp-axi patch-skill`.
 
 ## Commands
 
 | Command | What it does |
 | --- | --- |
-| `impeccable-axi` / `home` | engine version, skill version and patch state, this project's PRODUCT.md / DESIGN.md |
-| `impeccable-axi detect <file\|dir\|url>... [--rule ids] [--file text] [--sort rule\|file]` | run the detector and summarise; engine flags (`--scope`, `--viewport`, `--cdp`, `--target`, `--no-advisory`, …) pass through |
-| `impeccable-axi patch-skill [--revert] [--dry-run] [--skill-dir p]` | rewrite the skill's `detect --json` calls to `impeccable-axi detect`; originals kept in `<skill>/.impeccable-axi-backup/` |
+| `imp-axi` / `home` | engine version, skill version and patch state, this project's PRODUCT.md / DESIGN.md |
+| `imp-axi detect <file\|dir\|url>... [--rule ids] [--file text] [--sort rule\|file]` | run the detector and summarise; engine flags (`--scope`, `--viewport`, `--cdp`, `--target`, `--no-advisory`, …) pass through |
+| `imp-axi patch-skill [--revert] [--dry-run] [--skill-dir p]` | rewrite the skill's `detect --json` calls to `imp-axi detect`; originals kept in `<skill>/.imp-axi-backup/` |
 
 Every command accepts `--fields a,b`, `--limit <n>`, `--full` and `--help`. `detect` exits 0 whenever the scan
 ran (read `status`); exit 1 means the engine is missing or the scan failed, exit 2 a usage error.
@@ -39,4 +42,4 @@ ran (read `status`); exit 1 means the engine is missing or the scan failed, exit
 Source files (`.jsx`, `.tsx`, `.css`) only get the detector's regex rules; `detect` says so in `coverage`.
 Scan built `.html` or a dev-server URL for the full rule set.
 
-After updating the skill (copying a new upstream version over it), run `impeccable-axi patch-skill` again.
+After updating the skill (copying a new upstream version over it), run `imp-axi patch-skill` again.

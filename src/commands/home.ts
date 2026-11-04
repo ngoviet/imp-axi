@@ -4,7 +4,7 @@ import { parseCommandArgs } from "../args.js";
 import { brokenEnvBin, findEngine, skillDir, skillEngineVersion } from "../engine.js";
 import type { Runtime } from "../runtime.js";
 
-export const HOME_HELP = `usage: impeccable-axi home
+export const HOME_HELP = `usage: imp-axi home
 description: Engine and skill status plus the current project's design context files. Same as running with no arguments
 `;
 
@@ -40,17 +40,17 @@ export async function homeView(args: string[], rt: Runtime): Promise<Record<stri
   if (existsSync(skillMd)) {
     const text = readFileSync(skillMd, "utf8");
     const version = text.match(/^version:\s*(\S+)/m)?.[1] ?? "?";
-    const patched = text.includes("impeccable-axi:begin");
-    skillState = `${version} at ${tilde(dir, rt.home)}, ${patched ? "patched (detect goes through impeccable-axi)" : "not patched"}`;
+    const patched = text.includes("imp-axi:begin");
+    skillState = `${version} at ${tilde(dir, rt.home)}, ${patched ? "patched (detect goes through imp-axi)" : "not patched"}`;
   }
 
   const ctx = ["PRODUCT.md", "DESIGN.md", ".impeccable/config.json"].map((f) => `${f} ${existsSync(join(rt.cwd, f)) ? "yes" : "no"}`);
   const help = [
-    "Run `impeccable-axi detect <dir|file|url>` to scan (built .html or a dev-server URL runs every rule)",
+    "Run `imp-axi detect <dir|file|url>` to scan (built .html or a dev-server URL runs every rule)",
   ];
   const badBin = brokenEnvBin(rt);
   if (badBin) help.unshift(`Fix or unset IMPECCABLE_BIN: ${badBin} does not exist, so it is ignored`);
-  if (skillState.endsWith("not patched")) help.push("Run `impeccable-axi patch-skill` so the Impeccable skill uses impeccable-axi for detect");
+  if (skillState.endsWith("not patched")) help.push("Run `imp-axi patch-skill` so the Impeccable skill uses imp-axi for detect");
   if (!existsSync(join(rt.cwd, "PRODUCT.md"))) help.push("Run `/impeccable init` in Claude Code to write PRODUCT.md / DESIGN.md for this project");
   return {
     engine: engineState,

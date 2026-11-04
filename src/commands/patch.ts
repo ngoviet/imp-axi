@@ -5,8 +5,8 @@ import { skillDir } from "../engine.js";
 import { fail } from "../errors.js";
 import type { Runtime } from "../runtime.js";
 
-export const PATCH_HELP = `usage: impeccable-axi patch-skill [--revert] [--dry-run] [--skill-dir <path>]
-description: Point the Impeccable skill's \`detect --json\` calls at \`impeccable-axi detect\` and add a short note to its SKILL.md. Idempotent; originals are kept in <skill>/.impeccable-axi-backup/ for --revert
+export const PATCH_HELP = `usage: imp-axi patch-skill [--revert] [--dry-run] [--skill-dir <path>]
+description: Point the Impeccable skill's \`detect --json\` calls at \`imp-axi detect\` and add a short note to its SKILL.md. Idempotent; originals are kept in <skill>/.imp-axi-backup/ for --revert
 flags[4]:
   --revert: restore the backed-up originals and remove the backup
   --dry-run: report what would change, write nothing
@@ -17,25 +17,25 @@ notes[2]:
   Only JSON-mode detect calls are rewritten; text-mode \`detect <path>\` examples stay as they are
 `;
 
-export const BACKUP_DIR = ".impeccable-axi-backup";
-const MARK_BEGIN = "<!-- impeccable-axi:begin -->";
-const MARK_END = "<!-- impeccable-axi:end -->";
-const PATCHED_SIGN = "impeccable-axi detect";
+export const BACKUP_DIR = ".imp-axi-backup";
+const MARK_BEGIN = "<!-- imp-axi:begin -->";
+const MARK_END = "<!-- imp-axi:end -->";
+const PATCHED_SIGN = "imp-axi detect";
 
 /**
  * `"<skill-base-dir>/scripts/impeccable" detect [flags] --json [rest]` (trong code block hoặc
- * backtick) ⇒ `impeccable-axi detect [flags] [rest]`. --json đứng giữa (ví dụ `--cdp … --json`) vẫn khớp.
+ * backtick) ⇒ `imp-axi detect [flags] [rest]`. --json đứng giữa (ví dụ `--cdp … --json`) vẫn khớp.
  */
 const DETECT_JSON = /"<skill-base-dir>\/scripts\/impeccable" detect((?: [^`\n]*?)?) --json((?: [^`\n]*)?)/g;
 const EXIT_LINE = "- Exit code 0 = clean; 2 = findings.";
 const SAME_JSON = "It returns the same JSON as a URL scan";
 const EXIT_LINE_NEW =
-  "- impeccable-axi exits 0 whenever the scan ran, clean or not: read `status` for the counts. Drill down with `--rule <id>`, `--file <part of path>`, `--full`.";
+  "- imp-axi exits 0 whenever the scan ran, clean or not: read `status` for the counts. Drill down with `--rule <id>`, `--file <part of path>`, `--full`.";
 
 const SKILL_NOTE = `${MARK_BEGIN}
-## Detector output (local patch: impeccable-axi)
+## Detector output (local patch: imp-axi)
 
-On this machine detector scans go through \`impeccable-axi detect\` (same targets and flags as \`detect\`, JSON implied). It prints a TOON summary: totals, a rules table with each rule's fix once, findings per file, then the first 20 findings interleaved across rules. Raw \`detect --json\` reaches hundreds of KB on built sites and gets cut off by the shell tool. Drill down with \`--rule <id>\`, \`--file <part of path>\`, \`--limit <n>\` or \`--full\`. If \`impeccable-axi\` is not on PATH, fall back to \`"\${CLAUDE_SKILL_DIR}/scripts/impeccable" detect --json\`.
+On this machine detector scans go through \`imp-axi detect\` (same targets and flags as \`detect\`, JSON implied). It prints a TOON summary: totals, a rules table with each rule's fix once, findings per file, then the first 20 findings interleaved across rules. Raw \`detect --json\` reaches hundreds of KB on built sites and gets cut off by the shell tool. Drill down with \`--rule <id>\`, \`--file <part of path>\`, \`--limit <n>\` or \`--full\`. If \`imp-axi\` is not on PATH, fall back to \`"\${CLAUDE_SKILL_DIR}/scripts/impeccable" detect --json\`.
 ${MARK_END}
 `;
 
@@ -43,7 +43,7 @@ export function patchText(name: string, text: string): { text: string; replaceme
   let n = 0;
   let out = text.replace(DETECT_JSON, (_m, before: string, after: string) => {
     n++;
-    return `impeccable-axi detect${before}${after}`;
+    return `imp-axi detect${before}${after}`;
   });
   if (n && out.includes(EXIT_LINE)) {
     out = out.replaceAll(EXIT_LINE, EXIT_LINE_NEW);
@@ -125,7 +125,7 @@ function patch(dir: string, backup: string, dry: boolean): Record<string, unknow
     changed: changed.length ? changed : "0 files changed",
     ...(textMode ? { untouched: `${textMode} text-mode detect calls left as they are` } : {}),
     help: changed.length && !dry
-      ? ["Start a new Claude Code session so the patched skill is loaded", "Run `impeccable-axi patch-skill --revert` to undo"]
+      ? ["Start a new Claude Code session so the patched skill is loaded", "Run `imp-axi patch-skill --revert` to undo"]
       : [],
   };
 }
@@ -139,7 +139,7 @@ function revert(dir: string, backup: string, dry: boolean): Record<string, unkno
     const saved = join(backup, rel);
     if (!existsSync(saved)) continue;
     // Bản hiện tại không còn dấu patch ⇒ skill đã được chép đè bản mới: đừng ghi đè bằng bản cũ.
-    if (!readFileSync(join(dir, rel), "utf8").includes("impeccable-axi")) continue;
+    if (!readFileSync(join(dir, rel), "utf8").includes("imp-axi")) continue;
     restored.push(rel);
     if (!dry) copyFileSync(saved, join(dir, rel));
   }

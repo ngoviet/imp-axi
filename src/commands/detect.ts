@@ -6,7 +6,7 @@ import { fail } from "../errors.js";
 import type { Runtime } from "../runtime.js";
 import { assertFields, clip, commandLine, quote, type Row, shortPath, tally } from "../views.js";
 
-export const DETECT_HELP = `usage: impeccable-axi detect <file|dir|url>... [flags]
+export const DETECT_HELP = `usage: imp-axi detect <file|dir|url>... [flags]
 description: Run the Impeccable detector (detect --json) and print a TOON summary: counts by rule and file, each rule's fix once, then the first findings interleaved across rules so one page covers every rule
 flags[17]:
   --rule <id,id>: only these rules (ids from the rules table)
@@ -31,9 +31,9 @@ notes[3]:
   Source files (.jsx/.tsx/.css) get regex rules only; built .html or a dev-server URL runs the full rule set
   Engine: IMPECCABLE_BIN, else the skill's bundled binary, else ~/.impeccable/bin/<skill VERSION>/, else the skill launcher (downloads once)
 examples[3]:
-  impeccable-axi detect src
-  impeccable-axi detect dist --rule low-contrast,tiny-text
-  impeccable-axi detect http://localhost:5173 --viewport 390x844
+  imp-axi detect src
+  imp-axi detect dist --rule low-contrast,tiny-text
+  imp-axi detect http://localhost:5173 --viewport 390x844
 `;
 
 /** Flag chuyển nguyên cho engine. */
@@ -81,7 +81,7 @@ export async function detectCommand(args: string[], rt: Runtime): Promise<Record
   const cdp = p.str("cdp");
   const targets = p.positionals;
   if (!targets.length && !cdp) {
-    fail("detect: give a file, directory or URL to scan", "VALIDATION_ERROR", ["Run `impeccable-axi detect --help` for usage"]);
+    fail("detect: give a file, directory or URL to scan", "VALIDATION_ERROR", ["Run `imp-axi detect --help` for usage"]);
   }
   if (targets.length && cdp) fail("detect: --cdp takes no file or URL targets", "VALIDATION_ERROR");
   const sort = p.str("sort") ?? "rule";
@@ -156,7 +156,7 @@ export async function detectCommand(args: string[], rt: Runtime): Promise<Record
   }
 
   const help: string[] = [];
-  const prefix = "impeccable-axi detect";
+  const prefix = "imp-axi detect";
   if (shown.length) {
     out["rules"] = ruleTable(shown, p.global.full);
     const files = tally(shown, (f) => shortPath(f.file, rt.cwd));
