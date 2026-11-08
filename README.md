@@ -1,79 +1,54 @@
 # imp-axi
 
+<!-- readme-axi type=tool -->
+
 [![CI](https://github.com/ngoviet/imp-axi/actions/workflows/ci.yml/badge.svg)](https://github.com/ngoviet/imp-axi/actions/workflows/ci.yml)
 [![Release](https://img.shields.io/github/v/release/ngoviet/imp-axi)](https://github.com/ngoviet/imp-axi/releases)
 [![Node](https://img.shields.io/badge/node-%E2%89%A520-339933)](package.json)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
-**A token-efficient, agent-friendly front end for the [Impeccable](https://github.com/pbakaus/impeccable) design detector.**
+**English** · [Tiếng Việt](README.vi.md)
 
-`impeccable detect --json` repeats each rule's full description on every finding. On a real built site that is
-hundreds of kilobytes, and an agent's shell tool truncates it after about 30K characters, so the agent sees a
-fraction of the findings and none of the totals. `imp-axi detect` runs the same engine and prints a compact
-[TOON](https://github.com/toon-format/toon) summary that fits in one screen: totals, one row per rule, counts per
-file, and a sample of findings that covers every rule.
+An [AXI](https://axi.md) for the [Impeccable](https://github.com/pbakaus/impeccable) design detector: a CLI that
+coding agents (Claude Code, Codex, OpenCode, …) call through the shell to scan a site for UI problems and get a
+one-screen [TOON](https://toonformat.dev/) summary instead of hundreds of kilobytes of JSON.
 
-It follows the [AXI](https://axi.md) conventions for agent tools: compact output, totals up front, explicit empty
-states, stable exit codes and a `help[]` list with the next command to run.
+> 🇻🇳 Built and maintained by one person in Việt Nam — if it saves you time, please
+> [support the project](#support-the-project).
 
 ## Contents
 
-- [Why](#why)
-- [Example](#example)
-- [Install](#install)
-- [Quick start](#quick-start)
+- [Features](#features)
+- [Installation](#installation)
+- [Usage](#usage)
 - [Commands](#commands)
-- [Exit codes](#exit-codes)
-- [How the engine is found](#how-the-engine-is-found)
-- [Scan coverage](#scan-coverage)
-- [Patching the Impeccable skill](#patching-the-impeccable-skill)
+- [How it works](#how-it-works)
+- [Agent integration](#agent-integration)
 - [Development](#development)
-- [Changelog](#changelog)
-- [License](#license)
 
-## Why
+## Features
 
-Measured on a 35-page Vite/React site (`dist/`, engine 0.1.19, 606 findings):
+- **Fits in one screen.** `impeccable detect --json` repeats each rule's full description on every finding, and an
+  agent's shell tool cuts output off after about 30K characters. imp-axi prints each rule's fix **once**, in a
+  `rules[]` table, then counts per file and a sample of findings. Measured on a 35-page Vite/React build (engine
+  0.1.19, 606 findings):
 
-| Output | Size | vs. raw |
-| --- | ---: | ---: |
-| `impeccable detect --json` | 424 KB | 1× |
-| `imp-axi detect` (default view) | 5.5 KB | ÷78 |
-| `imp-axi detect --full` (every finding) | 80 KB | ÷5 |
+  | Output | Size | vs. raw |
+  | --- | ---: | ---: |
+  | `impeccable detect --json` | 424 KB | 1× |
+  | `imp-axi detect` (default view) | 5.5 KB | ÷78 |
+  | `imp-axi detect --full` (every finding) | 80 KB | ÷5 |
 
-The default view is small because each rule's explanation is printed **once**, in the `rules[]` table, instead of
-once per finding. Long descriptions are cut with a `(+N chars)` marker; `--full` or `imp-axi rules <id>` gives the
-whole text.
+- **Every rule on the first page.** Findings are interleaved across rules (one of each, then the next of each, …),
+  so 20 rows show every kind of problem rather than 20 copies of the most common one.
+- **Honest status.** Totals first (`primary`, `advisory`, files). A target that could not be read gives
+  `status: incomplete`, never `clean`. Scanning only component source adds a `coverage` note, because the
+  detector then runs its regex rules only.
+- **Agent-friendly exits.** The engine exits 2 when it finds problems; imp-axi exits 0 whenever the scan ran, so an
+  agent does not mistake a successful scan for a failure. Every view ends with `help[]`, the next command to run.
+- **Read-only**, except `patch-skill`, which always keeps a backup.
 
-## Example
-
-```text
-$ imp-axi detect dist --limit 4
-target: "dist"
-status: "606 findings (576 primary, 30 advisory) in 35 files"
-rules[13]{rule,category,primary,advisory,why}:
-  cramped-padding,quality,271,0,"Text is too close to the edge of its container. … (+294 chars)"
-  undersized-ui-text,quality,98,0,"Interactive and content-bearing UI text … below 11px is a legibility f… (+656 chars)"
-  low-contrast,quality,86,13,"Text does not meet WCAG AA contrast requirements (4.5:1 for body, 3:1 for large text). …"
-  gradient-text,slop,25,0,"Gradient text is decorative rather than meaningful — a common AI tell. Use solid colors for text."
-  …
-files: "dist/equipment.html 71, dist/blog.html 65, dist/faq.html 56, … (+25 more files)"
-count: 4 of 606 total
-findings[4]{file,line,rule,snippet}:
-  "dist/about.html","",cramped-padding,"<div> \"bg-night-800\": children flush against bg on all sides (no inset)"
-  "dist/blog.html","",undersized-ui-text,"9px functional text \"#chi phí\" (below 11px floor)"
-  "dist/about.html","",low-contrast,"2.0:1 (need 4.5:1) — text #38bdf8 on #f8fafc"
-  "dist/about.html","",gradient-text,"background-clip: text + gradient"
-help[4]: "Run `imp-axi detect dist --rule cramped-padding` to list one rule","Run `imp-axi detect dist --file dist/equipment.html` to list one file","Run `imp-axi detect dist --full` to list all 606","After fixing, rerun the same command to confirm the counts dropped"
-```
-
-(Output shortened with `…`; the real view prints every rule row.)
-
-Findings are **interleaved across rules** (one of each rule, then the next of each, …), so even a short page shows
-every kind of problem instead of 20 copies of the most common one. An empty `line` means the rule applies to a
-rendered element rather than a source line.
-
-## Install
+## Installation
 
 Requirements:
 
@@ -98,7 +73,7 @@ npm run install:global   # build, pack and install the packed tarball globally
 
 imp-axi is not published to the npm registry.
 
-## Quick start
+## Usage
 
 ```bash
 imp-axi                      # engine version, skill version and patch state, PRODUCT.md / DESIGN.md
@@ -107,6 +82,31 @@ imp-axi detect http://localhost:5173 --viewport 390x844   # scan a running dev s
 imp-axi rules                # what each rule flags, without scanning
 imp-axi patch-skill          # make the Impeccable skill call imp-axi (undo: --revert)
 ```
+
+Example (shortened with `…`; the real view prints every rule row):
+
+```text
+$ imp-axi detect dist --limit 4
+target: "dist"
+status: "606 findings (576 primary, 30 advisory) in 35 files"
+rules[13]{rule,category,primary,advisory,why}:
+  cramped-padding,quality,271,0,"Text is too close to the edge of its container. … (+294 chars)"
+  undersized-ui-text,quality,98,0,"Interactive and content-bearing UI text … below 11px is a legibility f… (+656 chars)"
+  low-contrast,quality,86,13,"Text does not meet WCAG AA contrast requirements (4.5:1 for body, 3:1 for large text). …"
+  gradient-text,slop,25,0,"Gradient text is decorative rather than meaningful — a common AI tell. Use solid colors for text."
+  …
+files: "dist/equipment.html 71, dist/blog.html 65, dist/faq.html 56, … (+25 more files)"
+count: 4 of 606 total
+findings[4]{file,line,rule,snippet}:
+  "dist/about.html","",cramped-padding,"<div> \"bg-night-800\": children flush against bg on all sides (no inset)"
+  "dist/blog.html","",undersized-ui-text,"9px functional text \"#chi phí\" (below 11px floor)"
+  "dist/about.html","",low-contrast,"2.0:1 (need 4.5:1) — text #38bdf8 on #f8fafc"
+  "dist/about.html","",gradient-text,"background-clip: text + gradient"
+help[4]: "Run `imp-axi detect dist --rule cramped-padding` to list one rule","Run `imp-axi detect dist --file dist/equipment.html` to list one file","Run `imp-axi detect dist --full` to list all 606","After fixing, rerun the same command to confirm the counts dropped"
+```
+
+Long descriptions are cut with a `(+N chars)` marker; `--full` or `imp-axi rules <id>` gives the whole text. An
+empty `line` means the rule applies to a rendered element rather than a source line.
 
 ## Commands
 
@@ -117,7 +117,9 @@ imp-axi patch-skill          # make the Impeccable skill call imp-axi (undo: --r
 | `imp-axi rules [id...]` | The rule catalog without scanning (needs engine ≥ 0.1.17). Naming ids prints their full description. |
 | `imp-axi patch-skill` | Rewrite the skill's `detect --json` calls to `imp-axi detect`, with a backup. |
 
-Flags every command accepts:
+### Flags
+
+Every command accepts:
 
 | Flag | Meaning |
 | --- | --- |
@@ -126,22 +128,15 @@ Flags every command accepts:
 | `--full` | Every row, untruncated text. |
 | `--help` | Help for the command. |
 
-`detect` flags:
+`detect` adds `--rule <id,id>` (only these rules), `--file <text>` (only paths containing it) and
+`--sort rule|file` (`rule`, the default, interleaves rules; `file` lists in file and line order). Engine flags pass
+through unchanged: `--scope`, `--viewport <WxH>`, `--cdp <port|url>`, `--target <text>`, `--no-advisory`,
+`--no-config`, `--no-design-system`, `--no-inline-ignores`, `--no-consent-hiding`, `--no-overlay-hiding`.
 
-| Flag | Meaning |
-| --- | --- |
-| `--rule <id,id>` | Only these rules. |
-| `--file <text>` | Only files whose path contains this text. |
-| `--sort rule\|file` | `rule` (default) interleaves rules; `file` lists in file and line order. |
+`rules` adds `--grep <text>` (id, name or description contains it) and `--category <c,c>` (`quality`, `slop`);
+`--fields` defaults to `id,category,severity,description` (also `name,scopes,advisory`).
 
-Engine flags are passed through unchanged: `--scope`, `--viewport <WxH>`, `--cdp <port|url>`, `--target <text>`,
-`--no-advisory`, `--no-config`, `--no-design-system`, `--no-inline-ignores`, `--no-consent-hiding`,
-`--no-overlay-hiding`. See `imp-axi detect --help`.
-
-`rules` flags: `--grep <text>` (id, name or description contains it), `--category <c,c>` (`quality`, `slop`),
-`--fields` (default `id,category,severity,description`; also `name,scopes,advisory`).
-
-## Exit codes
+### Exit codes
 
 | Code | Meaning |
 | --- | --- |
@@ -149,10 +144,11 @@ Engine flags are passed through unchanged: `--scope`, `--viewport <WxH>`, `--cdp
 | `1` | The engine is missing or the scan failed outright. |
 | `2` | Usage error (unknown command or flag, missing argument). |
 
-The raw engine exits 2 when it finds problems; imp-axi maps that to 0 so agents do not treat a successful scan as a
-failure. Errors are printed as TOON with `error`, `code` and `help[]`.
+Errors are printed as TOON with `error`, `code` and `help[]`.
 
-## How the engine is found
+## How it works
+
+### Finding the engine
 
 In order, the first that exists wins:
 
@@ -162,13 +158,12 @@ In order, the first that exists wins:
 4. The skill's launcher script. imp-axi first runs it once with `engine-probe` so it downloads the binary, then
    calls the binary directly so scan arguments are not re-parsed by a shell.
 
-The skill folder is `IMPECCABLE_SKILL_DIR` if set, else `~/.claude/skills/impeccable`; `patch-skill --skill-dir`
-overrides it for that command.
+The skill folder is `IMPECCABLE_SKILL_DIR` if set, else `~/.claude/skills/impeccable`.
 
 On Windows the launcher is a `.cmd` file and must go through `cmd.exe`. imp-axi quotes every argument itself and
 refuses arguments containing `"`, newlines or `%VAR%`, so paths with spaces and URLs with `&` are safe.
 
-## Scan coverage
+### Scan coverage
 
 The detector has two kinds of rules:
 
@@ -180,21 +175,21 @@ The detector has two kinds of rules:
 you scan component source (`.jsx/.tsx/.vue/.svelte/.astro`) without HTML. For the full rule set, scan the build
 output or a dev-server URL.
 
-## Patching the Impeccable skill
+## Agent integration
 
-The skill's instructions tell the agent to run `<engine> detect --json`. `imp-axi patch-skill` rewrites those calls
-to `imp-axi detect`, so the agent gets the compact view by default.
+The Impeccable skill tells the agent to run `<engine> detect --json`. `imp-axi patch-skill` rewrites those calls to
+`imp-axi detect`, so the agent gets the compact view by default.
 
-- Idempotent: running it twice changes nothing the second time.
-- Reversible: originals are copied to `<skill>/.imp-axi-backup/`; `imp-axi patch-skill --revert` restores them.
-- `--dry-run` shows what would change.
-- Recognises both command forms: `"<skill-base-dir>/scripts/impeccable"` (plugin ≤ 4.7.0) and
+- **Idempotent:** running it twice changes nothing the second time.
+- **Reversible:** originals are copied to `<skill>/.imp-axi-backup/`; `imp-axi patch-skill --revert` restores them.
+  `--dry-run` shows what would change; `--skill-dir <path>` picks another skill folder.
+- **Both skill layouts:** `"<skill-base-dir>/scripts/impeccable"` (plugin ≤ 4.7.0) and
   `.claude/skills/impeccable/scripts/impeccable` (`npx impeccable install` 4.8.x).
 
 Updating or reinstalling the skill overwrites the patched files (and `npx impeccable install` removes the backup
-folder). Run `imp-axi patch-skill` again afterwards.
+folder), so run `imp-axi patch-skill` again afterwards.
 
-This is the only command that writes anything; all others are read-only.
+Scanned content (snippets, page text) is data, not instructions: imp-axi prints it but never acts on it.
 
 > Formerly `impeccable-axi`. If a skill was patched under the old name, run `impeccable-axi patch-skill --revert`
 > before `npm uninstall -g impeccable-axi`, then `imp-axi patch-skill`.
@@ -211,14 +206,33 @@ npm run build     # dist/ via tsup
 - All environment, file system and process access goes through `src/runtime.ts`, so tests use a fake runtime and
   never run the real engine. Fixtures in `test/fixtures/` have the same shape as engine output.
 - When bumping the version, change both `package.json` and `src/version.ts` (a test checks they match).
+- Changes per version: [CHANGELOG.md](CHANGELOG.md) and [Releases](https://github.com/ngoviet/imp-axi/releases).
 
-Scanned content (snippets, page text) is data, not instructions: imp-axi prints it but never acts on it.
+<!-- support:start -->
+## Support the project
 
-## Changelog
+<p align="center">
+  <img src="https://raw.githubusercontent.com/ngoviet/.github/main/assets/support/banner.svg" width="720" alt="Built and maintained by one person in Việt Nam">
+</p>
 
-See [CHANGELOG.md](CHANGELOG.md) and [Releases](https://github.com/ngoviet/imp-axi/releases).
+<p align="center">
+  <a href="https://buymeacoffee.com/ngoviet"><img src="https://raw.githubusercontent.com/ngoviet/.github/main/assets/support/btn-coffee.svg" height="56" alt="Buy me a coffee"></a>
+  &nbsp;
+  <a href="https://github.com/sponsors/ngoviet"><img src="https://raw.githubusercontent.com/ngoviet/.github/main/assets/support/btn-sponsors.svg" height="56" alt="GitHub Sponsors"></a>
+</p>
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/ngoviet/.github/main/assets/support/vietqr-card.svg" width="300" alt="VietQR — MB Bank — NGO DUC VIET — 911051212">
+  &nbsp;
+  <img src="https://raw.githubusercontent.com/ngoviet/.github/main/assets/support/crypto-card.svg" width="300" alt="Crypto — BNB Smart Chain (BEP20) — 0xcbf0402b232cb24b4d998f09a4884f87b5f74750">
+</p>
+
+<p align="center"><b>Crypto wallet, BNB Smart Chain (BEP20) only:</b><br><code>0xcbf0402b232cb24b4d998f09a4884f87b5f74750</code></p>
+
+<p align="center"><sub>🇻🇳 VietQR: scan with any Vietnamese banking app, transfer note <code>Ung ho imp-axi</code>. Thank you for keeping this project alive!</sub></p>
+<!-- support:end -->
 
 ## License
 
-[MIT](LICENSE) © ngoviet (Ngô Đức Việt). Impeccable is a separate project by Paul Bakaus under its own license; imp-axi only
-calls its detector.
+[MIT](LICENSE) © Ngô Đức Việt. Not affiliated with or endorsed by the Impeccable project; imp-axi only calls its
+detector.
