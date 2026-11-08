@@ -289,6 +289,15 @@ describe("patch-skill", () => {
     expect(patchText("two.md", `${BLOCK}\n${BLOCK}`).text).not.toContain("- Exit code 0 = clean; 2 = findings.");
   });
 
+  it("also rewrites the `.claude/skills/...` form written by `npx impeccable install` 4.8.1", () => {
+    const local = (s: string) => s.replaceAll('"<skill-base-dir>/scripts/impeccable"', ".claude/skills/impeccable/scripts/impeccable");
+    expect(patchText("routing.md", local(ROUTING)).text).toBe("run `imp-axi detect <scan.targets joined by spaces>` once");
+    expect(patchText("critique.md", local(CDP)).text).toContain("`imp-axi detect --cdp 9222 --target <part of the page URL or title>`. It returns the same summary");
+    expect(patchText("layout.md", local(BLOCK)).text).toContain("imp-axi detect --scope layout [target files or dirs]\n");
+    // tiền tố đường dẫn khác thì không đụng (tránh `~/imp-axi detect`)
+    expect(patchText("x.md", "`~/.claude/skills/impeccable/scripts/impeccable detect --json`").replacements).toBe(0);
+  });
+
   it("--skill-dir is resolved against the working directory", async () => {
     const base = mkdtempSync(join(tmpdir(), "iaxi-rel-"));
     mkdirSync(join(base, "skill"));
@@ -364,4 +373,46 @@ it("parseFindings accepts a wrapped object and rejects garbage", () => {
   const list: Finding[] = [{ antipattern: "x", file: "a.html" }];
   expect(parseFindings(JSON.stringify({ findings: list }))).toEqual(list);
   expect(parseFindings("not json")).toBeUndefined();
+});
+
+describe("rules", () => {
+  const RULES = fixture("rules.json");
+
+  it("lists the catalog with counts by category, descriptions clipped once", async () => {
+    const rt = fakeRuntime({ code: 0, stdout: RULES });
+    const { out, code } = await runCli(["rules"], rt);
+    expect(code).toBe(0);
+    expect(rt.calls[0]).toEqual([process.execPath, "detect", "--list-rules", "--json"]);
+    expect(out).toContain('status: "4 rules (3 primary, 1 advisory)"');
+    expect(out).toContain('categories: "slop 3, quality 1"');
+    expect(out).toContain("rules[4]{id,category,severity,description}:");
+    expect(out).toContain("(+");
+    expect(out).toContain("imp-axi rules side-tab");
+  });
+
+  it("named ids print full descriptions and flag unknown ids", async () => {
+    const { out } = await runCli(["rules", "side-tab", "nope"], fakeRuntime({ code: 0, stdout: RULES }));
+    expect(out).toContain("pair it with a second cue such as an icon or label.");
+    expect(out).toContain("unknown rule ids: nope");
+    expect(out).toContain("rules[1]");
+  });
+
+  it("filters by --grep and --category, passes --scope and --no-advisory to the engine", async () => {
+    const rt = fakeRuntime({ code: 0, stdout: RULES });
+    const { out } = await runCli(["rules", "--grep", "shadow", "--category", "slop", "--scope", "type", "--no-advisory", "--fields", "id,advisory"], rt);
+    expect(rt.calls[0]).toEqual([process.execPath, "detect", "--list-rules", "--json", "--scope", "type", "--no-advisory"]);
+    expect(out).toContain("rules[1]{id,advisory}:");
+    expect(out).toContain("hard-offset-shadow,true");
+    const none = await runCli(["rules", "--grep", "zzz"], fakeRuntime({ code: 0, stdout: RULES }));
+    expect(none.out).toContain("0 rules found");
+  });
+
+  it("an engine without --list-rules (findings or empty array) is SCAN_FAILED with the upgrade hint", async () => {
+    for (const stdout of ["[]", FINDINGS]) {
+      const { out, code } = await runCli(["rules"], fakeRuntime({ code: 1, stdout }));
+      expect(code).toBe(1);
+      expect(out).toContain("code: SCAN_FAILED");
+      expect(out).toContain("needs engine 0.1.17 or later");
+    }
+  });
 });

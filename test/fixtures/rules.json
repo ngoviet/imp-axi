@@ -1,0 +1,35 @@
+[
+  {
+    "id": "side-tab",
+    "name": "Side-tab accent border",
+    "category": "slop",
+    "severity": "warning",
+    "scopes": [],
+    "description": "A thick colored border on one side of a card is the most recognizable tell of AI-generated UI. Use a subtler accent or remove it entirely; if a stripe must mark state, keep it thin and pair it with a second cue such as an icon or label."
+  },
+  {
+    "id": "low-contrast",
+    "name": "Low contrast text",
+    "category": "quality",
+    "severity": "warning",
+    "scopes": [],
+    "description": "Text does not meet WCAG AA contrast against its background."
+  },
+  {
+    "id": "overused-font",
+    "name": "Overused font",
+    "category": "slop",
+    "severity": "warning",
+    "scopes": ["type"],
+    "description": "A default font choice that reads as generated."
+  },
+  {
+    "id": "hard-offset-shadow",
+    "name": "Hard offset shadow",
+    "category": "slop",
+    "severity": "advisory",
+    "scopes": [],
+    "description": "A crisp shadow pushed 4px or more; fine if neobrutalism is the intent.",
+    "advisory": true
+  }
+]

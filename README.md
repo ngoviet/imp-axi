@@ -34,6 +34,7 @@ before uninstalling it (`npm uninstall -g impeccable-axi`), then `imp-axi patch-
 | --- | --- |
 | `imp-axi` / `home` | engine version, skill version and patch state, this project's PRODUCT.md / DESIGN.md |
 | `imp-axi detect <file\|dir\|url>... [--rule ids] [--file text] [--sort rule\|file]` | run the detector and summarise; engine flags (`--scope`, `--viewport`, `--cdp`, `--target`, `--no-advisory`, …) pass through |
+| `imp-axi rules [id...] [--grep text] [--category c]` | the rule catalog without scanning (`detect --list-rules --json`, engine 0.1.17+); naming ids prints their full description |
 | `imp-axi patch-skill [--revert] [--dry-run] [--skill-dir p]` | rewrite the skill's `detect --json` calls to `imp-axi detect`; originals kept in `<skill>/.imp-axi-backup/` |
 
 Every command accepts `--fields a,b`, `--limit <n>`, `--full` and `--help`. `detect` exits 0 whenever the scan

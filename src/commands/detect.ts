@@ -276,7 +276,7 @@ function toRow(f: Finding, fields: readonly string[], cwd: string): Row {
 const MARKUP = new Set([".html", ".htm"]);
 /**
  * File component: engine chỉ chạy luật regex trên chúng (đo trên engine 0.1.16: .css/.scss/.js/.ts cũng
- * vậy, nhưng chúng có cả trong bản build nên không dùng làm dấu hiệu "đây là mã nguồn").
+ * vậy, từ 0.1.19 thêm .mjs/.cjs; nhưng chúng có cả trong bản build nên không dùng làm dấu hiệu "mã nguồn").
  */
 const COMPONENT = new Set([".jsx", ".tsx", ".vue", ".svelte", ".astro"]);
 const SKIP_DIRS = new Set(["node_modules", ".git"]);

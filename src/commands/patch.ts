@@ -23,10 +23,17 @@ const MARK_END = "<!-- imp-axi:end -->";
 const PATCHED_SIGN = "imp-axi detect";
 
 /**
- * `"<skill-base-dir>/scripts/impeccable" detect [flags] --json [rest]` (trong code block hoặc
- * backtick) ⇒ `imp-axi detect [flags] [rest]`. --json đứng giữa (ví dụ `--cdp … --json`) vẫn khớp.
+ * Lệnh engine trong skill, hai dạng: bản plugin (≤ 4.7.0) ghi `"<skill-base-dir>/scripts/impeccable"`,
+ * còn `npx impeccable install --providers=claude` 4.8.1 ghi `.claude/skills/impeccable/scripts/impeccable`.
+ * Lookbehind chặn ăn mất tiền tố như `~/` (sẽ thành `~/imp-axi`).
  */
-const DETECT_JSON = /"<skill-base-dir>\/scripts\/impeccable" detect((?: [^`\n]*?)?) --json((?: [^`\n]*)?)/g;
+const ENGINE_CMD = String.raw`(?:"<skill-base-dir>\/scripts\/impeccable"|(?<![\w/~.-])\.claude\/skills\/impeccable\/scripts\/impeccable)`;
+/**
+ * `<ENGINE_CMD> detect [flags] --json [rest]` (trong code block hoặc backtick) ⇒ `imp-axi detect [flags] [rest]`.
+ * --json đứng giữa (ví dụ `--cdp … --json`) vẫn khớp.
+ */
+const DETECT_JSON = new RegExp(String.raw`${ENGINE_CMD} detect((?: [^${"`"}\n]*?)?) --json((?: [^${"`"}\n]*)?)`, "g");
+const DETECT_TEXT = new RegExp(String.raw`${ENGINE_CMD} detect (?![^${"`"}\n]*--json)`, "g");
 const EXIT_LINE = "- Exit code 0 = clean; 2 = findings.";
 const SAME_JSON = "It returns the same JSON as a URL scan";
 const EXIT_LINE_NEW =
@@ -97,7 +104,7 @@ function patch(dir: string, backup: string, dry: boolean): Record<string, unknow
   for (const rel of skillFiles(dir)) {
     const path = join(dir, rel);
     const text = readFileSync(path, "utf8");
-    textMode += (text.match(/"<skill-base-dir>\/scripts\/impeccable" detect (?![^`\n]*--json)/g) ?? []).length;
+    textMode += (text.match(DETECT_TEXT) ?? []).length;
     if (text.includes(PATCHED_SIGN) || text.includes(MARK_BEGIN)) {
       already++;
       continue;
