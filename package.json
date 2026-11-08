@@ -5,6 +5,14 @@
   "type": "module",
   "license": "MIT",
   "author": "ngoviet",
+  "homepage": "https://github.com/ngoviet/imp-axi#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ngoviet/imp-axi.git"
+  },
+  "bugs": {
+    "url": "https://github.com/ngoviet/imp-axi/issues"
+  },
   "keywords": [
     "axi",
     "agent",
@@ -21,6 +29,7 @@
   "files": [
     "dist",
     "README.md",
+    "CHANGELOG.md",
     "LICENSE"
   ],
   "engines": {
