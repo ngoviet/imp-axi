@@ -4,9 +4,9 @@
 # **default branch** — cố ý, để nhánh do người khác đẩy lên không tự khai báo hay
 # tự chạy lệnh trên máy chủ daemon. Nên file này phải nằm trên `main`.
 
-# Repo public từ 08/11/2026: CI là GitHub Actions (.github/workflows/ci.yml, Ubuntu + Windows).
-# Không bật Woodpecker cho repo public (PR từ fork lạ sẽ chạy trên máy chủ prod).
-# no_ci giữ true để bước CI của pipeline không chờ; check thật xem trên GitHub.
+# Repo public từ 08/11/2026: hai CI chạy song song, GitHub Actions (.github/workflows/ci.yml,
+# Ubuntu + Windows) và Woodpecker (.woodpecker/ci.yaml, PR từ fork phải duyệt tay).
+# no_ci giữ true để bước CI của pipeline không chờ; check thật xem trên PR/commit.
 no_ci: true
 
 # Lệnh nền chạy TRƯỚC agent test (exit ≠ 0 ⇒ dừng bước Test): cài phụ thuộc sạch
