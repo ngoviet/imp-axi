@@ -1,0 +1,27 @@
+# CI trên Woodpecker tự host (PC4, https://ci.bepmamnon.com) — repo private nên không dùng
+# GitHub Actions (hết phút cho repo private từ 22/10/2026).
+# CHỈ CHẠY khi repo đã được Enable trong https://ci.bepmamnon.com và có tệp này.
+#
+# Container ra được Internet nhưng không vào LAN nhà: test chạy offline (engine giả, không chạy
+# binary Impeccable thật). Mỗi bước là một container mới dùng chung thư mục đã clone.
+# Image ghim digest, đo 08/11/2026.
+
+when:
+  - event: pull_request
+  - event: push
+    branch: main
+  - event: manual
+
+steps:
+  - name: install
+    image: node:24-bookworm-slim@sha256:01d566e8d94d8c619591d78652babfccd3c6992a3dffa9ed5ab39e11cf6c70e9
+    commands:
+      - node --version && npm --version
+      - npm ci --no-audit --no-fund
+
+  - name: check
+    image: node:24-bookworm-slim@sha256:01d566e8d94d8c619591d78652babfccd3c6992a3dffa9ed5ab39e11cf6c70e9
+    environment:
+      NODE_OPTIONS: --dns-result-order=ipv4first
+    commands:
+      - npm run check
